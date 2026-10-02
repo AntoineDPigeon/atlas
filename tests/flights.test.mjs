@@ -2,6 +2,7 @@ import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {normalizeFlightPrices,handleFlightPrices} from '../server/flights.js';
 import {nearbyAirports,flightsMarkup,flightResultMarkup} from '../dist/flights.js';
+import {flightWindow} from '../dist/flight-window.js';
 const now=new Date('2026-10-02T12:00:00Z');
 const input={tripType:'oneway',arrival:'BCN',outbound:'2026-11-01'};
 const request=(body=input,ip='flight-test',origin)=>new Request('https://atlas.example/api/flight-prices',{method:'POST',headers:{'Content-Type':'application/json','CF-Connecting-IP':ip,...(origin?{Origin:origin}:{})},body:JSON.stringify(body)});
@@ -26,6 +27,26 @@ test('Future dates, unknown airports, malformed dates and cross-site requests co
  assert.equal((await handleFlightPrices(request({...input,outbound:'2026-99-99'}),{},unexpected,now)).status,400);
  assert.equal((await handleFlightPrices(request(input,'cross-site','https://other.example'),{},unexpected,now)).status,403);
  assert.equal((await handleFlightPrices(request(),{},unexpected,now)).status,503);
+ const rome=await handleFlightPrices(request({...input,arrival:'FCO',outbound:'2027-09-03'}),{},unexpected,now);assert.equal(rome.status,200);assert.equal((await rome.json()).code,'dates_too_far');
+ const roundtrip=await handleFlightPrices(request({...input,tripType:'roundtrip',returnAirport:'FCO',returnDate:'2027-09-03'}),{},unexpected,now);assert.equal((await roundtrip.json()).code,'dates_too_far');
+});
+
+test('Flight window follows Montreal calendar days, including across UTC midnight',()=>{
+ assert.equal(flightWindow(new Date('2026-10-03T01:00:00Z')).today,'2026-10-02');
+ assert.equal(flightWindow(new Date('2026-10-03T05:00:00Z')).today,'2026-10-03');
+});
+
+test('Source date and no-flight errors become clear unavailable results; quota and key failures stay distinct',async()=>{
+ for(const [id,error,upstreamStatus,status,code] of [
+  ['future','Requested flight date is too far in the future.',200,200,'dates_too_far'],
+  ['no-flight',"Google hasn't returned any results for this query.",200,200,'no_flights'],
+  ['quota','Your account has run out of searches.',429,429,'source_quota'],
+  ['key','Invalid API key. Check fixture-secret.',401,503,'source_auth'],
+  ['unknown','fixture-secret upstream detail',200,502,'source_unavailable']
+ ]){
+  const response=await handleFlightPrices(request(input,'classified-'+id),{SERPAPI_API_KEY:'fixture-secret'},async()=>Response.json({error},{status:upstreamStatus}),now);
+  assert.equal(response.status,status);const body=await response.json();assert.equal(body.code,code);assert.doesNotMatch(JSON.stringify(body),/fixture-secret/);
+ }
 });
 
 test('Flight search always originates at YUL, uses CAD and keeps the key on the server',async()=>{

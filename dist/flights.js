@@ -1,4 +1,5 @@
 import {airports} from './assets/airports.js';
+import {flightWindow,flightWindowMessage} from './flight-window.js';
 const escape=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const money=n=>new Intl.NumberFormat('fr-CA',{style:'currency',currency:'CAD',currencyDisplay:'code',maximumFractionDigits:0}).format(n);
 export function nearbyAirports(port){
@@ -27,6 +28,7 @@ export function hydrateFlights(root){
   section.querySelectorAll('input,select').forEach(control=>control.addEventListener('change',()=>{controller?.abort();button.disabled=false;section.querySelectorAll('[data-flight-return-control]').forEach(el=>el.hidden=type.value!=='roundtrip');output.textContent='Dates ou aéroport modifiés. Recalculez le prix moyen.';updateLink()}));
   button.addEventListener('click',async()=>{
     const value=input();if(!value.outbound||(value.tripType==='roundtrip'&&(!value.returnDate||value.returnDate<value.outbound))){output.textContent='Choisissez des dates de vol valides.';return}
+    const {today,limit}=flightWindow();if(value.outbound<today){output.textContent='La date du vol est passée.';return}if(value.outbound>limit||value.returnDate>limit){output.textContent=flightWindowMessage;return}
     controller?.abort();const active=new AbortController();controller=active;button.disabled=true;output.textContent='Recherche des tarifs aériens…';
     try{const response=await fetch('/api/flight-prices',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(value),signal:AbortSignal.any([active.signal,AbortSignal.timeout(45000)])});const result=await response.json();if(!response.ok)throw Error(result.error||'Les tarifs aériens sont indisponibles.');if(!section.isConnected||active.signal.aborted)return;output.innerHTML=flightResultMarkup(result)}catch(error){if(section.isConnected&&!active.signal.aborted)output.textContent=error instanceof SyntaxError?'Les tarifs aériens ne sont pas encore connectés.':error.message==='Failed to fetch'?'Connexion indisponible. Réessayez.':error.message}finally{if(controller===active)button.disabled=false}
   });
