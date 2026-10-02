@@ -1,1 +1,19 @@
-{"name":"atlas-cruises","private":true,"type":"module","scripts":{"start":"node serve.mjs","check":"node --check dist/app.js && node --check dist/data.js"}}
+{
+  "name": "atlas-cruises",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "node serve.mjs",
+    "check": "node --check dist/app.js && node --check dist/data.js && node --check worker.js && node --check server/google-reviews.js && node --check dist/google-reviews.js",
+    "test": "node --test",
+    "deploy": "wrangler deploy",
+    "preview": "wrangler preview",
+    "dev:cloudflare": "wrangler dev"
+  },
+  "devDependencies": {
+    "wrangler": "^4.147.0"
+  },
+  "engines": {
+    "node": ">=22"
+  }
+}

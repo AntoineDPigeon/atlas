@@ -1,2 +1,6 @@
 .source-research/
 *.tar.gz
+node_modules/
+.wrangler/
+.env*
+.dev.vars*
