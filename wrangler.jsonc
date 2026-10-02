@@ -3,6 +3,9 @@
   "name": "atlas",
   "main": "worker.js",
   "compatibility_date": "2026-10-02",
+  "secrets": {
+    "required": ["GOOGLE_PLACES_API_KEY"]
+  },
   "assets": {
     "directory": "./dist",
     "binding": "ASSETS",

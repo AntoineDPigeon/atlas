@@ -43,6 +43,8 @@ Le nom `atlas` dans `wrangler.jsonc` doit correspondre au nom de votre Worker Cl
 
 Dans **Settings → Variables and Secrets**, ajoutez `GOOGLE_PLACES_API_KEY` avec le type **Secret**, puis déployez. Activez **Places API (New)** et la facturation dans Google Cloud et limitez la clé à cette API. Ne placez jamais la clé dans Git, les commandes de build, le code du navigateur ou les captures d’écran.
 
+Le déploiement exige désormais que ce secret soit lié au Worker. Si Atlas répond « Les avis Google ne sont pas encore activés », vérifiez la configuration **Production** du Worker `atlas`, et non **Previews Base** ni les secrets de la section **Builds**. L’existence du secret dans les réglages ne suffit pas si la version qui sert le trafic ne le reçoit pas : modifiez le secret dans les réglages de production et choisissez **Deploy**, puis vérifiez la version active dans **Deployments**.
+
 La recherche de fiche demande uniquement son identifiant (`places.id`). La lecture de la fiche inclut les notes et les avis (`Place Details Enterprise + Atmosphere`). Les appels restent soumis aux quotas Google ; définissez vos quotas dans Google Cloud pour contrôler les dépenses. Les avis ne sont pas mis en cache sur le serveur ou dans le stockage du navigateur. Un port inconnu, un résultat éloigné ou une fiche sans terminal identifiable ne reçoit pas de note de remplacement.
 
 `npm start` utilise aussi la route serveur locale et lit la variable d’environnement `GOOGLE_PLACES_API_KEY` si elle est déjà configurée. Sans clé, l’application reste utilisable et indique que les avis Google ne sont pas activés.
