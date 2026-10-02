@@ -1,4 +1,5 @@
 import {ports,cruises} from './data.js';
+import {findNorthAfricanPort} from './north-africa.js';
 const origin='https://www.ncl.com';
 const base=origin+'/ca/en/api/';
 const escape=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -10,7 +11,7 @@ let controller,version=0;
 const cache=new Map();
 async function get(path,signal){const key=path,now=Date.now();const cached=cache.get(key);if(cached&&now-cached.time<5*60e3)return cached.value;const response=await fetch(base+path,{signal,credentials:'omit'});if(!response.ok)throw Error('La source Norwegian est temporairement indisponible.');const value=await response.json();cache.set(key,{time:now,value});if(cache.size>200)cache.delete(cache.keys().next().value);return value;}
 const image=path=>{if(!path)return null;const u=new URL(path,origin);return u.origin===origin&&u.pathname.startsWith('/content/dam/')?u.href:null;};
-export function registerPort(p){if(!p?.code)return null;const id=aliases[p.code]||p.code;let port=ports.find(p=>p.id===id);if(!port){const xy=positions[p.code];port={id,name:escape(p.title),country:escape(p.title?.split(',').at(-1)?.trim()||''),lat:xy?.[0],lon:xy?.[1]};ports.push(port);}return id;}
+export function registerPort(p){if(!p?.code)return null;const id=findNorthAfricanPort(p.title)?.id||aliases[p.code]||p.code;let port=ports.find(p=>p.id===id);if(!port){const xy=positions[p.code];port={id,name:escape(p.title),country:escape(p.title?.split(',').at(-1)?.trim()||''),lat:xy?.[0],lon:xy?.[1]};ports.push(port);}return id;}
 function orderedPorts(sequence,definitions){const codes=definitions.map(p=>p.code).filter(Boolean).sort((a,b)=>b.length-a.length);const result=[];let remaining=sequence;while(remaining){remaining=remaining.replace(/^\d+/,'');if(!remaining)break;if(remaining.startsWith('ATSEA')){remaining=remaining.slice(5);continue}const code=codes.find(c=>remaining.startsWith(c));if(!code)return null;const id=registerPort(definitions.find(p=>p.code===code));if(result.at(-1)!==id)result.push(id);remaining=remaining.slice(code.length);}return result;}
 function periodMonths(start,end){const list=[],names=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];const d=new Date(start+'T12:00:00Z'),last=new Date(end+'T12:00:00Z');d.setUTCDate(1);while(d<=last&&list.length<25){list.push(names[d.getUTCMonth()]+'-'+d.getUTCFullYear());d.setUTCMonth(d.getUTCMonth()+1)}return list.join(',');}
 export async function loadCruises(state,append=false,onUpdate=()=>{}){

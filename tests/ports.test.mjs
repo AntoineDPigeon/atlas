@@ -1,6 +1,21 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {cruises,filterCruises} from '../dist/data.js';
+import {ports} from '../dist/data.js';
+import {registerPort} from '../dist/ncl.js';
+import {findNorthAfricanPort,northAfricanPorts} from '../dist/north-africa.js';
+
+test('North African stops share canonical IDs across providers and have globe positions',()=>{
+ const count=ports.length;
+ assert.equal(registerPort({code:'ALX',title:'Alexandria, Egypt'}),'ALY');
+ assert.equal(registerPort({code:'TUN',title:'Tunis (La Goulette), Tunisia'}),'LGN');
+ assert.equal(registerPort({code:'TAN',title:'Tangier, Morocco'}),'TNG');
+ assert.equal(findNorthAfricanPort('Port-Saïd (Égypte)').id,'PSD');
+ assert.equal(findNorthAfricanPort('Naples, Italy'),undefined);
+ assert.equal(ports.length,count);
+ assert.equal(northAfricanPorts.length,8);
+ assert.ok(northAfricanPorts.every(p=>Number.isFinite(p.lat)&&Number.isFinite(p.lon)&&ports.some(x=>x.id===p.id)));
+});
 
 test('les départs doivent contenir chaque port sélectionné, avec les autres filtres',()=>{
  const saved=cruises.slice();

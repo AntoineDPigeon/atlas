@@ -4,6 +4,7 @@ import {handleGoogleReviews, normalizeGooglePlace, matchesPort} from '../server/
 import {findReviewPort} from '../server/ports.js';
 import {googleReviewMarkup, renderGoogleReviews, hydrateGoogleReviews} from '../dist/google-reviews.js';
 import worker from '../worker.js';
+import {rememberPlaceId,savedPlaceId,forgetPlaceId} from '../dist/google-place-ids.js';
 
 const request = (body = {id: 'barcelona'}, options = {}) => new Request('https://atlas.example/api/google-reviews', {
   method: 'POST', headers: {'Content-Type': 'application/json', 'CF-Connecting-IP': options.ip || 'test-default', ...options.headers},
@@ -108,4 +109,29 @@ test('Repeated paid lookups are throttled before contacting Google', async () =>
   for (let i = 0; i < 10; i++) assert.equal((await handleGoogleReviews(request({id: 'barcelona'}, {ip: 'throttle'}), {GOOGLE_PLACES_API_KEY: 'fixture'}, fetcher)).status, 404);
   assert.equal((await handleGoogleReviews(request({id: 'barcelona'}, {ip: 'throttle'}), {GOOGLE_PLACES_API_KEY: 'fixture'}, fetcher)).status, 429);
   assert.equal(calls, 10);
+});
+
+test('Remembered Google IDs skip discovery but still verify the terminal and fetch a fresh score',async()=>{
+  const calls=[];
+  const fetcher=async(url)=>{calls.push(url);return Response.json(place)};
+  const response=await handleGoogleReviews(request({id:'barcelona',placeId:place.id},{ip:'remembered'}),{GOOGLE_PLACES_API_KEY:'fixture'},fetcher);
+  assert.equal(response.status,200);assert.equal(calls.length,1);assert.match(calls[0],/places\/test-terminal/);
+  assert.equal((await response.json()).placeId,place.id);
+  const unrelated=await handleGoogleReviews(request({id:'barcelona',placeId:place.id},{ip:'remembered-wrong'}),{GOOGLE_PLACES_API_KEY:'fixture'},async()=>Response.json({...place,location:{latitude:0,longitude:0}}));
+  assert.equal(unrelated.status,404);
+  assert.equal((await handleGoogleReviews(request({id:'barcelona',placeId:'../secret'}),{GOOGLE_PLACES_API_KEY:'fixture'},()=>{throw Error('Unexpected lookup')})).status,400);
+});
+
+test('Browser persistence stores only the place ID and expiry, never ratings or reviews',()=>{
+  const values=new Map(),store={getItem:k=>values.get(k),setItem:(k,v)=>values.set(k,v),removeItem:k=>values.delete(k)};
+  const port={id:'barcelona',lat:41.35,lon:2.17};
+  rememberPlaceId(port,place.id,store,1000);
+  assert.deepEqual(JSON.parse([...values.values()][0]),{placeId:place.id,savedAt:1000});
+  assert.equal(savedPlaceId(port,store,2000),place.id);
+  assert.equal(savedPlaceId({...port,id:'other'},store,2000),null);
+  assert.equal(savedPlaceId({...port,lat:0},store,2000),null);
+  assert.equal(savedPlaceId(port,store,1000+366*86400000),null);
+  rememberPlaceId(port,place.id,store);forgetPlaceId(port,store);assert.equal(values.size,0);
+  const blocked={setItem:()=>{throw Error('Storage disabled')},getItem:()=>{throw Error('Storage disabled')}};
+  assert.doesNotThrow(()=>rememberPlaceId(port,place.id,blocked));assert.equal(savedPlaceId(port,blocked),null);
 });

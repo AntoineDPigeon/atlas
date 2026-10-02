@@ -20,7 +20,7 @@ Ouvrir http://127.0.0.1:4173.
 
 ## Images
 
-Les photos des croisières et des escales sont chargées à distance depuis les URL fournies par les compagnies ou cruise.ca. Les images de l’interface utilisent le chargement différé (`loading="lazy"`). Elles ne proviennent pas des captures de `docs/screenshots/`.
+Les photos des croisières et des escales sont chargées à distance depuis les URL fournies par les compagnies ou cruise.ca. Chaque escale affiche sa propre photo avec sa source dans la fiche d’itinéraire. Si la source ne fournit pas d’image, Atlas cherche une photo du même port dans les offres déjà chargées. Une photo absente ou inaccessible est signalée sans utiliser celle d’une autre destination. Les images de l’interface utilisent le chargement différé (`loading="lazy"`). Elles ne proviennent pas des captures de `docs/screenshots/`.
 
 Les contours géographiques, le favicon et Three.js restent des ressources locales dans `dist/`.
 
@@ -28,7 +28,7 @@ Voir [la documentation des sources](docs/data-sources.md) pour les sources de do
 
 ## Cloudflare et notes Google
 
-Le Worker sert `dist/` et la route `/api/google-reviews` sur le même domaine. La note Google sur 5 se charge uniquement à l’ouverture de « Note Google » dans une fiche d’itinéraire. Les notes restent associées au terminal trouvé, avec son nom et son adresse. Elles ne sont pas affichées sur le globe Three.js. Les avis des navires restent fournis par cruise.ca et les liens existants.
+Le Worker sert `dist/` et la route `/api/google-reviews` sur le même domaine. La note Google sur 5 se charge à l’ouverture de « Note Google » dans une fiche d’itinéraire. Pour un port déjà consulté, cette section se rouvre automatiquement. Seul l’identifiant Google du lieu est mémorisé dans le navigateur pendant un an : les consultations suivantes demandent directement une note à jour sans refaire la recherche du lieu. Un identifiant périmé est effacé pour permettre une nouvelle recherche. Les notes restent associées au terminal trouvé, avec son nom et son adresse. Elles ne sont pas affichées sur le globe Three.js. Les avis des navires restent fournis par cruise.ca et les liens existants.
 
 Configuration Cloudflare Workers Builds :
 
@@ -50,3 +50,9 @@ La recherche de fiche demande uniquement son identifiant (`places.id`). La lectu
 `npm start` utilise aussi la route serveur locale et lit la variable d’environnement `GOOGLE_PLACES_API_KEY` si elle est déjà configurée. Sans clé, l’application reste utilisable et indique que les notes Google ne sont pas activées.
 
 Pour utiliser les outils Cloudflare en local : `npm install`, puis `npm run dev:cloudflare`. Utiliser une version de Node compatible avec Wrangler (voir `package-lock.json`).
+
+## Ports et filtres
+
+Le filtre « Ports à visiter » propose une recherche et des cases à cocher. Il partage la sélection du globe et ne conserve que les croisières qui passent par tous les ports choisis. Les options proviennent des départs chargés correspondant aux autres filtres ; un port déjà sélectionné reste visible même sans résultat. Les changements de ports ne rechargent pas les catalogues.
+
+Huit ports d’Afrique du Nord sont localisés : Agadir, Casablanca, Tanger, La Goulette/Tunis, Alger, Oran, Alexandrie et Port-Saïd. Les noms équivalents des fournisseurs sont rapprochés pour éviter les doublons. Leur présence dans le catalogue dépend des itinéraires disponibles pour les dates choisies.

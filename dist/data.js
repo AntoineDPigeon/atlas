@@ -1,3 +1,4 @@
+import {northAfricanPorts} from './north-africa.js';
 const base='https://www.ncl.com/content/dam/ncl/us/en/';
 export const photos={
   greek:{url:base+'destinations-ports/europe/greece/agnostic/NCL-Greek-Isles-Cruise-Santorini.jpg',label:'Santorini, Grèce',source:'https://www.ncl.com/cruise-destinations/greek-isles-cruises'},
@@ -8,6 +9,7 @@ export const photos={
   baltic:{url:base+'lifestyle/homepage/NCL-Cruise-Tallinn-Estonia.jpg',label:'Tallinn, Estonie',source:'https://www.ncl.com/cruise-destinations/northern-europe-cruises'}
 };
 export const ports=[
+  ...northAfricanPorts,
   {id:'barcelona',name:'Barcelone',country:'Espagne',lat:41.35,lon:2.17},
   {id:'marseille',name:'Marseille',country:'France',lat:43.3,lon:5.35},
   {id:'genoa',name:'Gênes',country:'Italie',lat:44.4,lon:8.93},
