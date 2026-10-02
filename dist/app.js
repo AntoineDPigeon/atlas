@@ -164,7 +164,7 @@ async function createGlobe(){
     const unitsPerPixel=(camera.top-camera.bottom)/(camera.zoom*h);
     routeRadiusScale.value=routeWidthPixels*unitsPerPixel/(2*routeBaseRadius);
     // Keep the small direction arrows readable at the same size in screen pixels.
-    routes.children.forEach(child=>{if(child.userData.routeArrow)child.scale.setScalar(6*unitsPerPixel/.028)});
+    routes.children.forEach(child=>{if(child.userData.routeArrow)child.scale.setScalar(8*unitsPerPixel/.028)});
   }
   function resize(){if(!host.clientWidth||!host.clientHeight)return;w=host.clientWidth;h=host.clientHeight;renderer.setSize(w,h);const view=5.5;camera.left=-view*w/h/2;camera.right=view*w/h/2;camera.top=view/2;camera.bottom=-view/2;camera.zoom=zoom;camera.updateProjectionMatrix();updateRouteThickness()}
   new ResizeObserver(resize).observe(host);resize();
