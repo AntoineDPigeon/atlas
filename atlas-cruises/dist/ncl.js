@@ -1,0 +1,44 @@
+import {ports,cruises} from './data.js';
+const origin='https://www.ncl.com';
+const base=origin+'/ca/en/api/';
+const escape=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const aliases={BCN:'barcelona',MRS:'marseille',CIV:'rome',NAP:'naples',PMI:'palma',MLA:'valletta',PIR:'athens',JTR:'santorini',JMK:'mykonos',DBV:'dubrovnik',KOT:'kotor',BGO:'bergen',GNR:'geiranger',AES:'alesund',CPH:'copenhagen',STO:'stockholm',HEL:'helsinki',TLL:'tallinn',SOU:'southampton',LIS:'lisbon',CAD:'cadiz'};
+// Approximate harbour/city positions, for discovery rather than navigation.
+const positions={ACE:[28.96,-13.54],AGA:[30.42,-9.6],AJA:[41.92,8.74],ALC:[38.34,-.49],BAR:[42.1,19.09],BBO:[43.35,-3.05],BRI:[41.13,16.86],CAG:[39.21,9.11],CAR:[37.6,-.98],CAS:[33.61,-7.62],CFU:[39.62,19.91],CTA:[37.5,15.09],FNC:[32.64,-16.91],GIB:[36.14,-5.35],GIJ:[43.55,-5.68],IBZ:[38.91,1.44],IJM:[52.46,4.59],IST:[41.03,28.99],KAK:[37.65,21.32],KOP:[45.55,13.73],KUS:[37.86,27.26],LCG:[43.37,-8.4],LEH:[49.49,.11],LGN:[36.82,10.31],LIV:[43.55,10.3],LPA:[28.14,-15.42],LRH:[46.16,-1.2],LVN:[45.55,-1.06],LXO:[41.18,-8.7],MLN:[35.29,-2.94],MOT:[36.72,-3.52],MSN:[38.19,15.56],PDL:[37.74,-25.67],PDR:[28.5,-13.86],PMO:[38.12,13.37],PRM:[37.13,-8.54],RAV:[44.49,12.28],RJK:[45.33,14.44],SAL:[40.67,14.76],SCP:[28.68,-17.77],SCT:[28.47,-16.25],SPE:[44.1,9.83],SPU:[43.51,16.44],TAR:[41.11,1.25],TLN:[43.12,5.93],TNG:[35.79,-5.81],VCE:[45.65,13.77],VLC:[39.45,-.32],VLF:[43.7,7.31],ZAD:[44.12,15.23],ZEE:[51.33,3.2],REY:[64.15,-21.94],AKU:[65.68,-18.09],ISA:[66.07,-23.13],HVG:[70.98,25.98],TOS:[69.65,18.96],TRD:[63.43,10.4],MOL:[62.74,7.16],FLM:[60.86,7.11],OLD:[61.83,6.8],HAU:[59.41,5.27],STA:[58.97,5.73],KRS:[58.15,8],OSL:[59.91,10.74],KIE:[54.32,10.14],WAR:[54.18,12.09],GDY:[54.54,18.55],RIX:[56.95,24.11],KLA:[55.71,21.13],VIS:[57.64,18.29],NYN:[58.9,17.95],HAM:[53.54,9.98],DOV:[51.12,1.31],BEL:[54.62,-5.9],DUB:[53.35,-6.2],COB:[51.85,-8.29],LIVP:[53.4,-3],GRK:[55.96,-4.76],INV:[57.69,-4.17],SQF:[56,-3.4],EDI:[55.98,-3.17],KIR:[58.99,-2.96],LER:[60.15,-1.15],TOR:[62.01,-6.77],ROT:[51.9,4.45],AMS:[52.38,4.9],POR:[50.35,-3.6],WAT:[52.14,-6.99],DUN:[56.46,-2.97],RHO:[36.45,28.22],HER:[35.34,25.15],CHA:[35.49,24.08],BOD:[37.04,27.43],IZM:[38.44,27.14],SAR:[39.88,20],PAT:[37.33,26.55]};
+export const feed={loading:false,error:null,page:0,hasMore:false,totalItineraries:0,loadedItineraries:0,checkedAt:null,failedItineraries:0};
+let controller,version=0;
+const cache=new Map();
+async function get(path,signal){const key=path,now=Date.now();const cached=cache.get(key);if(cached&&now-cached.time<5*60e3)return cached.value;const response=await fetch(base+path,{signal,credentials:'omit'});if(!response.ok)throw Error('La source Norwegian est temporairement indisponible.');const value=await response.json();cache.set(key,{time:now,value});if(cache.size>200)cache.delete(cache.keys().next().value);return value;}
+const image=path=>{if(!path)return null;const u=new URL(path,origin);return u.origin===origin&&u.pathname.startsWith('/content/dam/')?u.href:null;};
+export function registerPort(p){if(!p?.code)return null;const id=aliases[p.code]||p.code;let port=ports.find(p=>p.id===id);if(!port){const xy=positions[p.code];port={id,name:escape(p.title),country:escape(p.title?.split(',').at(-1)?.trim()||''),lat:xy?.[0],lon:xy?.[1]};ports.push(port);}return id;}
+function orderedPorts(sequence,definitions){const codes=definitions.map(p=>p.code).filter(Boolean).sort((a,b)=>b.length-a.length);const result=[];let remaining=sequence;while(remaining){remaining=remaining.replace(/^\d+/,'');if(!remaining)break;if(remaining.startsWith('ATSEA')){remaining=remaining.slice(5);continue}const code=codes.find(c=>remaining.startsWith(c));if(!code)return null;const id=registerPort(definitions.find(p=>p.code===code));if(result.at(-1)!==id)result.push(id);remaining=remaining.slice(code.length);}return result;}
+function periodMonths(start,end){const list=[],names=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];const d=new Date(start+'T12:00:00Z'),last=new Date(end+'T12:00:00Z');d.setUTCDate(1);while(d<=last&&list.length<25){list.push(names[d.getUTCMonth()]+'-'+d.getUTCFullYear());d.setUTCMonth(d.getUTCMonth()+1)}return list.join(',');}
+export async function loadCruises(state,append=false,onUpdate=()=>{}){
+ controller?.abort();controller=new AbortController();const signal=controller.signal,run=++version;feed.loading=true;feed.error=null;if(!append){feed.page=0;feed.loadedItineraries=0;feed.failedItineraries=0;cruises.splice(0);}onUpdate();
+ try{
+  if(!/^\d{4}-\d{2}-\d{2}$/.test(state.start)||!/^\d{4}-\d{2}-\d{2}$/.test(state.end)||state.start>state.end)throw Error('Choisissez une période valide.');
+  const query=new URLSearchParams({destinations:'MEDITERRANEAN,GREEK_ISLES,NORTHERN_EUROPE',dates:periodMonths(state.start,state.end),limit:'12',offset:String(feed.page*12),guests:'2'});
+  const catalog=await get('v2/vacations/search?'+query,signal);if(!Array.isArray(catalog.itineraries)||!Number.isFinite(catalog.total))throw Error('Le format de la source a changé.');feed.totalItineraries=catalog.total;
+  const items=catalog.itineraries.filter(c=>c.destinations?.some(d=>['MEDITERRANEAN','GREEK_ISLES','NORTHERN_EUROPE'].includes(d.code)));
+  if(!items.length&&catalog.itineraries.length)throw Error('La source n’a pas confirmé la région Europe.');
+  const output=[];let index=0,failed=0;
+  await Promise.all(Array.from({length:Math.min(4,items.length)},async()=>{while(index<items.length){const item=items[index++];try{
+    if(!/^[A-Z0-9]+$/.test(item.code))throw Error('Itinéraire invalide');
+    const raw=await get('vacations/sailings/'+item.code,signal);if(!Array.isArray(raw.pricingStateRooms))throw Error('Départs absents');
+    const byDeparture=new Map();
+    for(const s of raw.pricingStateRooms){const date=s.sailStartDate?.slice(0,10),end=s.sailEndDate?.slice(0,10);if(s.currencyCode!=='CAD'||s.status!=='AVAILABLE'||!Number.isFinite(s.combinedPrice)||s.combinedPrice<=0||!/^\d{4}-\d{2}-\d{2}$/.test(date)||!/^\d{4}-\d{2}-\d{2}$/.test(end)||date<state.start||end>state.end||!/^\d+$/.test(s.packageId))continue;const current=byDeparture.get(s.packageId);if(!current||s.combinedPrice<current.combinedPrice)byDeparture.set(s.packageId,s);}
+    const defs=[item.embarkationPort,...(item.portsOfCall||[]),item.disembarkationPort].filter(Boolean);defs.forEach(registerPort);
+    for(const s of byDeparture.values()){let route=orderedPorts(s.sailingEventSequence||'',defs);if(!route?.length){const detail=await get(`vacations/events/${item.code}/package/${s.packageId}`,signal);route=eventsToStops(detail.events).map(p=>p.id);}if(!route.length)continue;
+      const date=s.sailStartDate.slice(0,10),endDate=s.sailEndDate.slice(0,10),nights=Math.round((Date.parse(endDate)-Date.parse(date))/864e5);if(nights<1||nights>100)continue;
+      const destinationCodes=item.destinations.map(d=>d.code);const region=destinationCodes.includes('NORTHERN_EUROPE')?'north':destinationCodes.includes('GREEK_ISLES')?'greek':'west';
+      output.push({id:'ncl-'+s.packageId,title:escape(item.title),company:'Norwegian Cruise Line',ship:escape(item.ship?.title),date,endDate,nights,price:s.combinedPrice,currency:'CAD',cabin:escape(s.title),region,ports:route,image:image(item.image?.src),itineraryCode:item.code,packageId:s.packageId,observedAt:new Date().toISOString(),sourceUrl:`${origin}/ca/en/cruises/itinerary?itineraryCode=${item.code}&packageId=${s.packageId}`,live:true});
+    }
+  }catch(e){if(signal.aborted)throw e;failed++;}}}));
+  if(run!==version)return;
+  if(items.length&&failed===items.length)throw Error('Norwegian n’a pas retourné les disponibilités. Réessayez dans quelques instants.');
+  const existing=new Set(cruises.map(c=>c.id));for(const c of output.sort((a,b)=>a.date.localeCompare(b.date)))if(!existing.has(c.id)){cruises.push(c);existing.add(c.id)}
+  feed.loadedItineraries+=items.length;feed.failedItineraries+=failed;feed.checkedAt=new Date().toISOString();feed.hasMore=(feed.page+1)*12<catalog.total;feed.page++;
+ }catch(e){if(run===version&&!signal.aborted){feed.error=e.message;feed.hasMore=false;}}finally{if(run===version){feed.loading=false;onUpdate();}}
+}
+function eventsToStops(events){if(!Array.isArray(events))throw Error('Escales absentes');const stops=[];for(const e of events.slice().sort((a,b)=>a.eventOrder-b.eventOrder)){if(!e.portCode)continue;const id=registerPort({code:e.portCode,title:e.title});if(stops.at(-1)?.id===id)continue;stops.push({id,name:escape(e.title),day:e.relativeCalendarDay,image:image(e.images?.[0]?.path)});}return stops;}
+export async function loadDetails(c){const raw=await get(`vacations/events/${c.itineraryCode}/package/${c.packageId}`);const stops=eventsToStops(raw.events);if(!stops.length)throw Error('Les escales sont indisponibles.');c.ports=stops.map(p=>p.id);c.stops=stops;return c;}

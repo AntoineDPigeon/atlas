@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="description" content="Explorez les croisières en Europe sur un globe 3D. Filtrez par dates et prix, découvrez les ports et visualisez les itinéraires. Offres réelles de sept compagnies de croisières en CAD.">
+  <meta name="theme-color" content="#102c36"><title>Atlas — L’Europe au fil de l’eau</title>
+  <link rel="icon" type="image/svg+xml" href="favicon.svg">
+  <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;450;500;550;600;650;700&family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css"><link rel="stylesheet" href="mobile.css">
+</head>
+<body data-mobile-view="globe">
+  <header class="header"><a class="brand" href="./" aria-label="Atlas, accueil"><span class="brand-icon">✳</span> atlas<span class="brand-dot">.</span></a><div class="header-label">L’EUROPE AU FIL DE L’EAU</div><div class="header-right"><span class="demo-badge">7 COMPAGNIES · CAD</span><button class="text-button" id="about">À propos <span class="info-icon">i</span></button></div></header>
+  <div class="mobile-tools"><div><strong id="mobile-period">Septembre 2028</strong><span id="mobile-summary">Jusqu’à 3 000 CAD / personne</span></div><button id="mobile-filters" aria-expanded="false" aria-controls="cruise-filters">Filtres <span id="filter-badge" hidden></span></button></div><button id="filters-backdrop" class="filters-backdrop" aria-label="Fermer les filtres" hidden></button><section id="cruise-filters" class="filters" aria-label="Filtres de croisières"><div class="mobile-filter-heading"><h2>Affiner votre voyage</h2><button id="close-filters" aria-label="Fermer les filtres">×</button></div>
+    <div class="date-filter"><span class="filter-icon">▦</span><label>Départ à partir du<input id="start" type="date" value="2028-09-01"></label><span class="date-separator">—</span><label>Retour au plus tard le<input id="end" type="date" value="2028-09-30"></label></div>
+    <div class="price-filter"><div><label for="budget">Budget par personne · CAD</label><output id="budget-value">Jusqu’à 3 000 CAD</output></div><input id="budget" type="range" min="400" max="5000" step="50" value="3000" aria-label="Prix maximum par personne en dollars canadiens (CAD)"></div>
+    <label class="company-filter">Compagnie connectée<select id="company"><option value="all">Toutes les sources connectées</option><option>Norwegian Cruise Line</option><option>Celebrity Cruises</option><option>Costa Cruises</option><option>Princess Cruises</option><option>MSC Cruises</option><option>Royal Caribbean</option><option>Holland America Line</option></select></label>
+    <label class="duration-filter">Durée du voyage<select id="duration"><option value="all">Toutes les durées</option><option value="short">1 à 5 nuits</option><option value="week">6 à 8 nuits</option><option value="long">9 à 12 nuits</option><option value="extended">13 nuits et plus</option></select></label>
+    <button id="reset" class="reset" aria-label="Réinitialiser les filtres">↺ <span>Réinitialiser</span></button>
+    <p id="date-draft-note" class="date-draft-note" hidden>Vos nouvelles dates seront utilisées uniquement après avoir cliqué sur « Rechercher avec ces dates ».</p><p id="filter-error" role="alert" hidden></p><button id="apply-filters" class="mobile-filter-apply">Afficher les croisières</button>
+  </section>
+  <div id="date-search-bar" class="date-search-bar" hidden><p id="date-search-message" role="status">Dates modifiées. Les résultats actuels restent affichés jusqu’à votre recherche.</p><button id="search-dates">Rechercher avec ces dates</button></div>
+  <main class="workspace">
+    <aside class="results"><div class="results-head"><div class="eyebrow">VOTRE PROCHAINE ESCALE</div><h1>Un monde à explorer.</h1><div class="results-meta"><span id="count" aria-live="polite"></span><label class="sort-label"><select id="sort" aria-label="Trier les croisières"><option value="recommended">Notre sélection</option><option value="price">Prix croissant</option><option value="date">Date de départ</option></select></label></div><div id="active-port"></div><p id="date-error" role="alert" hidden></p></div><div class="cards" id="cards"></div><div class="source-footer"><p id="source-status" aria-live="polite">Connexion aux sept catalogues de croisières…</p><button id="retry-source" hidden>Réessayer</button><button id="refresh-source">Actualiser la recherche</button><p>Prix en CAD par personne · confirmation chez le fournisseur<br>Sept compagnies : Norwegian, Celebrity, Costa, Princess, MSC, Royal Caribbean et Holland America. Costa, Princess, MSC, Royal Caribbean et Holland America via cruise.ca. Chargement automatique.</p></div></aside>
+    <section class="map-panel" aria-label="Globe interactif des ports européens">
+      <div class="map-top"><div class="map-intro"><span class="eyebrow">PRENEZ LE LARGE</span><h2>L’Europe, autrement.</h2><p>Sélectionnez les ports à inclure dans votre croisière.</p></div><button id="ports-toggle" class="ports-toggle" aria-expanded="false">⌖ <span>Liste des ports</span></button></div>
+      <nav class="regions" aria-label="Régions"><button class="active" data-region="all">Toute l’Europe</button><button data-region="west">Méditerranée</button><button data-region="greek">Îles grecques</button><button data-region="north">Europe du Nord</button></nav>
+      <div id="globe" aria-label="Globe 3D, faites glisser pour tourner et utilisez les boutons pour zoomer"><div class="globe-loading" id="globe-loading">Le monde se dessine…</div><div id="port-labels"></div></div>
+      <div id="port-list" class="port-list" hidden></div>
+      <div id="map-selection" class="map-selection" hidden></div>
+      <div class="map-controls"><button id="zoom-in" aria-label="Zoomer">+</button><button id="zoom-out" aria-label="Dézoomer">−</button><div class="control-divider"></div><button id="recenter" aria-label="Recentrer sur l’Europe">⌖</button></div>
+      <div class="map-bottom"><div class="legend"><span class="legend-port"></span> Port d’escale <span class="legend-route"></span> Itinéraire sélectionné</div><div class="globe-hint">Glissez pour explorer <span>·</span> Molette pour zoomer</div></div>
+      <div class="map-scale">EUROPE <span>45° N / 15° E</span></div>
+    </section>
+  </main>
+  <div id="catalog-loading" class="catalog-loading" hidden><div class="loading-panel" role="status" aria-live="polite" aria-atomic="true"><span class="loading-spinner" aria-hidden="true"></span><h2>Vos croisières se dessinent…</h2><p>Tous les itinéraires sont chargés automatiquement,<br>par lots de 12 pour chaque compagnie.</p><progress id="catalog-progress" max="1" aria-label="Progression du chargement des itinéraires"></progress><strong id="loading-count">Connexion aux compagnies…</strong><table class="loading-table" aria-label="Chargement par compagnie"><thead><tr><th scope="col">Compagnie</th><th scope="col">Itinéraires chargés</th></tr></thead><tbody id="loading-sources"></tbody></table></div></div>
+  <nav class="mobile-nav" aria-label="Vue des croisières"><button data-mobile-view="globe" aria-pressed="true">Globe</button><button data-mobile-view="results" aria-pressed="false">Croisières <span id="mobile-count">0</span></button></nav>
+  <dialog id="detail-dialog"><div id="dialog-content"></div></dialog>
+  <script type="module" src="app.js"></script>
+</body></html>
