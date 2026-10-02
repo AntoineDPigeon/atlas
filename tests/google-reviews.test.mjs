@@ -36,7 +36,7 @@ test('Missing configuration, cross-site requests and unknown ports make no paid 
   assert.equal((await handleGoogleReviews(new Request('https://atlas.example/api/google-reviews'), {}, fetcher)).status, 405);
 });
 
-test('Server sends secret only in upstream headers and returns attributed reviews without caching', async () => {
+test('Server requests and returns only the port score, never written reviews', async () => {
   const calls = [];
   const fetcher = async (url, options) => { calls.push({url, options}); return Response.json(calls.length === 1 ? {places: [{id: place.id}]} : place); };
   const result = await handleGoogleReviews(request({id: 'barcelona'}, {ip: 'success'}), {GOOGLE_PLACES_API_KEY: 'fixture-secret'}, fetcher);
@@ -46,11 +46,15 @@ test('Server sends secret only in upstream headers and returns attributed review
   assert.equal(calls[0].options.headers['X-Goog-FieldMask'], 'places.id');
   assert.equal(JSON.parse(calls[0].options.body).textQuery, 'Barcelone cruise port');
   assert.equal(calls[1].options.headers['X-Goog-Api-Key'], 'fixture-secret');
-  assert.match(calls[1].options.headers['X-Goog-FieldMask'], /reviews/);
+  assert.match(calls[1].options.headers['X-Goog-FieldMask'], /rating/);
+  assert.doesNotMatch(calls[1].options.headers['X-Goog-FieldMask'], /reviews/);
+  assert.equal(JSON.parse(body).score, 4.4);
+  assert.equal(Object.hasOwn(JSON.parse(body), 'reviews'), false);
+  assert.doesNotMatch(body, /Alice|Super escale|avatar/);
   const content = renderGoogleReviews(JSON.parse(body));
-  assert.match(content, /Google Maps/); assert.match(content, /Alice &lt;test&gt;/);
-  assert.match(content, /https:\/\/maps.google.com\/review/);
-  assert.doesNotMatch(content, /<img onerror/);
+  assert.match(content, /Google Maps/); assert.match(content, /4,4\/5/);
+  assert.match(content, /https:\/\/maps.google.com\/place/);
+  assert.doesNotMatch(renderGoogleReviews({...JSON.parse(body), reviews: place.reviews}), /Alice|Super escale|123|<article|<img/);
 });
 
 test('Google errors never leak the key and empty or unrelated places do not receive fabricated ratings', async () => {
@@ -61,7 +65,7 @@ test('Google errors never leak the key and empty or unrelated places do not rece
   assert.equal(quota.status, 429); assert.doesNotMatch(await quota.text(), /fixture-secret/);
   assert.equal(normalizeGooglePlace({...place, userRatingCount: 0}).score, null);
   const invalid = normalizeGooglePlace({...place, reviews: [{rating: 10}], googleMapsUri: 'javascript:alert(1)'});
-  assert.deepEqual(invalid.reviews, []); assert.equal(invalid.sourceUrl, '');
+  assert.equal(Object.hasOwn(invalid, 'reviews'), false); assert.equal(invalid.sourceUrl, '');
 });
 
 test('Worker forwards static assets and keeps API requests on the server', async () => {
@@ -72,6 +76,7 @@ test('Worker forwards static assets and keeps API requests on the server', async
   assert.equal((await worker.fetch(new Request('https://atlas.example/api/unknown'), env)).status, 404);
   assert.equal(assets, 1);
   assert.match(googleReviewMarkup({id: 'barcelona', lat: 41.35, lon: 2.17}), /<details/);
+  assert.match(googleReviewMarkup({id: 'barcelona', lat: 41.35, lon: 2.17}), /Note Google/);
   assert.equal(googleReviewMarkup({id: 'unlocated'}), '');
 });
 

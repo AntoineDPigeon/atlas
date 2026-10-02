@@ -1,7 +1,7 @@
 import {findReviewPort} from './ports.js';
 
 const api = 'https://places.googleapis.com/v1/';
-const detailsFields = 'id,displayName,formattedAddress,location,types,primaryType,googleMapsUri,rating,userRatingCount,reviews,attributions';
+const detailsFields = 'id,displayName,formattedAddress,location,types,primaryType,googleMapsUri,rating,userRatingCount,attributions';
 const requests = new Map();
 const json = (body, status = 200) => Response.json(body, {status, headers: {'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff'}});
 const text = (value, max = 8000) => typeof value === 'string' ? value.slice(0, max) : '';
@@ -15,13 +15,6 @@ export function normalizeGooglePlace(place) {
   return {
     name: text(place?.displayName?.text, 250), address: text(place?.formattedAddress, 500),
     score: count ? score : null, count, source: 'Google Maps', sourceUrl: https(place?.googleMapsUri),
-    reviews: (Array.isArray(place?.reviews) ? place.reviews : []).slice(0, 5).flatMap(review => {
-      if (!Number.isFinite(review.rating) || review.rating < 1 || review.rating > 5 || !review.authorAttribution?.displayName) return [];
-      return [{score: review.rating, text: text(review.text?.text || review.originalText?.text),
-        author: text(review.authorAttribution.displayName, 120), authorUrl: https(review.authorAttribution.uri),
-        avatar: https(review.authorAttribution.photoUri), sourceUrl: https(review.googleMapsUri),
-        published: text(review.relativePublishTimeDescription, 120)}];
-    }),
     attributions: (Array.isArray(place?.attributions) ? place.attributions : []).map(a => ({name: text(a.provider, 120), url: https(a.providerUri)})),
   };
 }
@@ -53,7 +46,7 @@ export async function handleGoogleReviews(request, env, fetcher = fetch) {
   if (request.method !== 'POST') return json({error: 'Méthode non autorisée.'}, 405);
   const origin = request.headers.get('Origin');
   if ((origin && origin !== new URL(request.url).origin) || request.headers.get('Sec-Fetch-Site') === 'cross-site') return json({error: 'Accès non autorisé.'}, 403);
-  if (!env.GOOGLE_PLACES_API_KEY) return json({error: 'Les avis Google ne sont pas encore activés sur ce site.'}, 503);
+  if (!env.GOOGLE_PLACES_API_KEY) return json({error: 'Les notes Google ne sont pas encore activées sur ce site.'}, 503);
   let input;
   try {
     if (Number(request.headers.get('Content-Length')) > 1024) return json({error: 'Requête trop grande.'}, 413);
@@ -80,6 +73,6 @@ export async function handleGoogleReviews(request, env, fetcher = fetch) {
     if (!matchesPort(place, port)) return json({error: 'Aucune fiche de terminal correspondante n’a été trouvée.'}, 404);
     return json(normalizeGooglePlace(place));
   } catch (error) {
-    return json({error: error.status === 429 ? 'Le quota Google est atteint. Réessayez plus tard.' : 'Les avis Google sont temporairement indisponibles.'}, error.status === 429 ? 429 : 502);
+    return json({error: error.status === 429 ? 'Le quota Google est atteint. Réessayez plus tard.' : 'Les notes Google sont temporairement indisponibles.'}, error.status === 429 ? 429 : 502);
   }
 }

@@ -4,12 +4,12 @@ const link = (url, label) => safeUrl(url) ? `<a href="${safeUrl(url)}" target="_
 
 export function googleReviewMarkup(port) {
   if (!port || !Number.isFinite(port.lat) || !Number.isFinite(port.lon)) return '';
-  return `<details class="google-reviews" data-google-port="${escape(port.id)}" data-lat="${port.lat}" data-lon="${port.lon}"><summary>Avis Google</summary><div class="google-review-content" aria-live="polite"></div></details>`;
+  return `<details class="google-reviews" data-google-port="${escape(port.id)}" data-lat="${port.lat}" data-lon="${port.lon}"><summary>Note Google</summary><div class="google-review-content" aria-live="polite"></div></details>`;
 }
 
 export function renderGoogleReviews(result) {
-  const score = result.score == null ? 'Note non disponible' : `★ ${Number(result.score).toLocaleString('fr-CA', {maximumFractionDigits: 1})}/5 · ${Number(result.count).toLocaleString('fr-CA')} avis`;
-  return `<div class="google-attribution" translate="no">Google Maps</div><strong class="google-place-name">${escape(result.name)}</strong><p class="google-place-address">${escape(result.address)}</p><p class="google-place-score">${score}</p><p>${link(result.sourceUrl, 'Voir la fiche sur Google Maps')}</p><p class="google-review-note">Avis du terminal indiqué ci-dessus. Sélection par pertinence fournie par Google ; ce ne sont pas tous les avis.</p>${result.reviews?.length ? result.reviews.map(review => `<article class="google-review"><header>${safeUrl(review.avatar) ? `<img src="${safeUrl(review.avatar)}" alt="" loading="lazy" referrerpolicy="no-referrer">` : ''}<div>${link(review.authorUrl, review.author)}<span>★ ${escape(review.score)}/5 · ${escape(review.published)}</span></div></header><p>${escape(review.text)}</p>${link(review.sourceUrl || result.sourceUrl, 'Lire cet avis sur Google Maps')}</article>`).join('') : '<p>Aucun avis écrit fourni pour cette fiche.</p>'}${result.attributions?.length ? `<p class="google-review-note">${result.attributions.map(a => link(a.url, a.name)).join(' · ')}</p>` : ''}`;
+  const score = result.score == null ? 'Note non disponible' : `★ ${Number(result.score).toLocaleString('fr-CA', {maximumFractionDigits: 1})}/5`;
+  return `<div class="google-attribution" translate="no">Google Maps</div><strong class="google-place-name">${escape(result.name)}</strong><p class="google-place-address">${escape(result.address)}</p><p class="google-place-score">${score}</p><p>${link(result.sourceUrl, 'Voir la fiche sur Google Maps')}</p>${result.attributions?.length ? `<p class="google-review-note">${result.attributions.map(a => link(a.url, a.name)).join(' · ')}</p>` : ''}`;
 }
 
 export function hydrateGoogleReviews(root) {
@@ -17,16 +17,16 @@ export function hydrateGoogleReviews(root) {
     el.addEventListener('toggle', async () => {
       if (!el.open || el.dataset.googleLoading === 'true' || el.dataset.googleLoaded === 'true') return;
       el.dataset.googleLoading = 'true';
-      const content = el.querySelector('.google-review-content'); content.textContent = 'Chargement des avis Google…';
+      const content = el.querySelector('.google-review-content'); content.textContent = 'Chargement de la note Google…';
       try {
         const response = await fetch('/api/google-reviews', {method: 'POST', headers: {'Content-Type': 'application/json'},
           body: JSON.stringify({id: el.dataset.googlePort, lat: Number(el.dataset.lat), lon: Number(el.dataset.lon)}), signal: AbortSignal.timeout(25000)});
         const result = await response.json();
-        if (!response.ok) throw new Error(result.error || 'Avis Google indisponibles.');
+        if (!response.ok) throw new Error(result.error || 'Note Google indisponible.');
         if (!el.isConnected) return;
         content.innerHTML = renderGoogleReviews(result); el.dataset.googleLoaded = 'true';
       } catch (error) {
-        if (el.isConnected) { content.textContent = error instanceof SyntaxError ? 'Les avis Google nécessitent le serveur Cloudflare.' : error.message === 'Failed to fetch' ? 'Connexion à Google indisponible. Fermez puis rouvrez pour réessayer.' : error.message; }
+        if (el.isConnected) { content.textContent = error instanceof SyntaxError ? 'Les notes Google nécessitent le serveur Cloudflare.' : error.message === 'Failed to fetch' ? 'Connexion à Google indisponible. Fermez puis rouvrez pour réessayer.' : error.message; }
       } finally { el.dataset.googleLoading = 'false'; }
     });
   });
