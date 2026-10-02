@@ -3,6 +3,7 @@ import {ratingMarkup,hydrateRatings,reviewLinks} from './ratings.js';
 import {googleReviewMarkup,hydrateGoogleReviews} from './google-reviews.js';
 import {portPhotoMarkup,hydratePortPhotos} from './port-photos.js';
 import {flightsMarkup,hydrateFlights} from './flights.js';
+import {northAfricanPorts} from './north-africa.js';
 import {createSeaRouter} from './sea-routes.js';
 import {photos,ports,companies,regions,cruises,durations,returnDate,filterCruises} from './data.js';
 import {feed,progress,sourceProgress,loadCruises,loadDetails} from './feed.js';
@@ -11,6 +12,7 @@ function defaultDates(){return {start:'2028-09-01',end:'2028-09-30'}}
 const state={...defaultDates(),budget:3000,company:'all',duration:'all',region:'all',ports:[],sort:'recommended',selected:null};
 for(const key of ['start','end'])$('#'+key).value=state[key];
 const portById=new Map(ports.map(p=>[p.id,p]));
+const northAfricanIds=new Set(northAfricanPorts.map(p=>p.id));
 const money=n=>new Intl.NumberFormat('fr-CA',{style:'currency',currency:'CAD',currencyDisplay:'code',maximumFractionDigits:0}).format(n);
 const date=d=>new Intl.DateTimeFormat('fr-FR',{day:'numeric',month:'short',timeZone:'UTC'}).format(new Date(d+'T12:00:00Z'));
 function portRating(p,options){return ratingMarkup('port',p?.ratingName||p?.name||'',p?.ratingId,options)}
@@ -38,16 +40,16 @@ let portFilterSignature='';
 function searchPortOptions(){
   const normalize=s=>s.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLocaleLowerCase('fr');
   const query=normalize($('#port-search').value.trim());let visible=0;
-  document.querySelectorAll('#ports-filter-options label').forEach(label=>{label.hidden=!normalize(label.textContent).includes(query);if(!label.hidden)visible++});
+  document.querySelectorAll('#ports-filter-options label').forEach(label=>{label.hidden=!normalize(label.textContent+' '+(label.dataset.portSearch||'')).includes(query);if(!label.hidden)visible++});
   $('#ports-filter-empty').hidden=visible>0;
 }
 function renderPortFilter(){
   const available=filterCruises({...state,ports:[]}),counts=new Map();
   available.forEach(c=>new Set(c.ports).forEach(id=>counts.set(id,(counts.get(id)||0)+1)));
-  const options=ports.filter(p=>counts.has(p.id)||state.ports.includes(p.id)).sort((a,b)=>a.name.localeCompare(b.name,'fr'));
+  const options=ports.filter(p=>counts.has(p.id)||state.ports.includes(p.id)||northAfricanIds.has(p.id)).sort((a,b)=>a.name.localeCompare(b.name,'fr'));
   const signature=JSON.stringify(options.map(p=>[p.id,p.name,counts.get(p.id)||0]));
   if(signature!==portFilterSignature){
-    $('#ports-filter-options').innerHTML=options.map(p=>`<label><input type="checkbox" data-filter-port="${p.id}" aria-label="${p.name}"><span>${p.name}</span><small>${counts.get(p.id)||0} départ${counts.get(p.id)>1?'s':''}</small></label>`).join('');
+    $('#ports-filter-options').innerHTML=options.map(p=>`<label data-port-search="${p.aliases?.join(' ')||''}"><input type="checkbox" data-filter-port="${p.id}" aria-label="${p.name}"><span>${p.name}</span><small>${counts.get(p.id)||0} départ${counts.get(p.id)>1?'s':''}</small></label>`).join('');
     portFilterSignature=signature;
   }
   document.querySelectorAll('[data-filter-port]').forEach(input=>input.checked=state.ports.includes(input.dataset.filterPort));
@@ -101,7 +103,7 @@ function render(){
   document.querySelectorAll('[data-route]').forEach(b=>b.addEventListener('click',()=>{setMobileView('globe');globe?.focusCruise(cruises.find(c=>c.id===b.dataset.route))}));
   $('#empty-reset')?.addEventListener('click',reset);
   const counts=new Map(ports.map(p=>[p.id,list.filter(c=>c.ports.includes(p.id)).length]));
-  $('#port-list').innerHTML='<div class="list-head">AJOUTEZ OU RETIREZ UNE ESCALE</div>'+ports.filter(p=>counts.get(p.id)||state.ports.includes(p.id)).sort((a,b)=>a.name.localeCompare(b.name,'fr')).map(p=>`<button data-port="${p.id}" class="${state.ports.includes(p.id)?'active':''}" aria-pressed="${state.ports.includes(p.id)}">${state.ports.includes(p.id)?'✓ ':''}<span class="port-name">${p.name}<small>${portRating(p)}</small></span><span>${counts.get(p.id)} départ${counts.get(p.id)>1?'s':''}</span></button>`).join('');
+  $('#port-list').innerHTML='<div class="list-head">AJOUTEZ OU RETIREZ UNE ESCALE</div>'+ports.filter(p=>counts.get(p.id)||state.ports.includes(p.id)||northAfricanIds.has(p.id)).sort((a,b)=>a.name.localeCompare(b.name,'fr')).map(p=>`<button data-port="${p.id}" class="${state.ports.includes(p.id)?'active':''}" aria-pressed="${state.ports.includes(p.id)}">${state.ports.includes(p.id)?'✓ ':''}<span class="port-name">${p.name}<small>${portRating(p)}</small></span><span>${counts.get(p.id)} départ${counts.get(p.id)>1?'s':''}</span></button>`).join('');
   document.querySelectorAll('#port-list [data-port]').forEach(b=>b.addEventListener('click',()=>selectPort(b.dataset.port)));
   const c=cruises.find(c=>c.id===state.selected);
   $('#map-selection').hidden=!c&&!state.ports.length;
@@ -271,7 +273,7 @@ async function createGlobe(){
       updateRouteThickness();
       const routeNote=$('#map-selection .route-key');if(routeNote&&c)routeNote.textContent='→ Sens du voyage · tracé maritime indicatif'+(missingRoutes?' · certains segments indisponibles':'');
 
-      for(const m of markerElements){m.el.classList.toggle('on-route',!!c?.ports.includes(m.p.id));m.el.classList.toggle('chosen',state.ports.includes(m.p.id));m.el.classList.toggle('dim',!counts.get(m.p.id));m.el.querySelector('.port-count').textContent=counts.get(m.p.id);m.el.title=`${m.p.name} · ${counts.get(m.p.id)} départ(s) disponible(s)`;m.el.setAttribute('aria-pressed',String(state.ports.includes(m.p.id)))}
+      for(const m of markerElements){m.el.classList.toggle('on-route',!!c?.ports.includes(m.p.id));m.el.classList.toggle('chosen',state.ports.includes(m.p.id));m.el.classList.toggle('dim',!counts.get(m.p.id)&&!northAfricanIds.has(m.p.id));m.el.querySelector('.port-count').textContent=counts.get(m.p.id);m.el.title=`${m.p.name} · ${counts.get(m.p.id)} départ(s) disponible(s)`;m.el.setAttribute('aria-pressed',String(state.ports.includes(m.p.id)))}
     }
   }
 }
