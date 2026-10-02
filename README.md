@@ -56,3 +56,13 @@ Pour utiliser les outils Cloudflare en local : `npm install`, puis `npm run dev:
 Le filtre « Ports à visiter » propose une recherche et des cases à cocher. Il partage la sélection du globe et ne conserve que les croisières qui passent par tous les ports choisis. Les options proviennent des départs chargés correspondant aux autres filtres ; un port déjà sélectionné reste visible même sans résultat. Les changements de ports ne rechargent pas les catalogues.
 
 Huit ports d’Afrique du Nord sont localisés : Agadir, Casablanca, Tanger, La Goulette/Tunis, Alger, Oran, Alexandrie et Port-Saïd. Les noms équivalents des fournisseurs sont rapprochés pour éviter les doublons. Leur présence dans le catalogue dépend des itinéraires disponibles pour les dates choisies.
+
+## Vols depuis Montréal
+
+La fiche de croisière propose les cinq aéroports commerciaux les plus proches dans un rayon de 300 km, à partir des données publiques OurAirports (https://ourairports.com/data/), snapshot du 2 octobre 2026. Les distances sont à vol d’oiseau. Le voyageur peut modifier les aéroports et dates. Le départ de YUL est proposé deux jours avant l’embarquement, le retour le lendemain du débarquement.
+
+Les tarifs réels passent par SerpApi Google Flights (https://serpapi.com/google-flights-api). Créer un compte sur https://serpapi.com/users/sign_up, puis ajouter `SERPAPI_API_KEY` comme **Secret** de production dans Cloudflare pour le Worker `atlas` et déployer. Cette clé est distincte de `GOOGLE_PLACES_API_KEY` et reste uniquement côté serveur. Le forfait gratuit annonce 250 recherches par mois ; vérifier les conditions et quotas courants sur https://serpapi.com/pricing. Cette intégration reste facultative : sans clé, les autres fonctions restent utilisables.
+
+La recherche `/api/flight-prices` utilise CAD, un adulte, la classe économique et au plus une correspondance. Elle se lance sur clic. La moyenne porte sur les offres distinctes retournées par la source, avec leur prix minimum, maximum, nombre et date de relevé. Elle ne constitue pas une moyenne exhaustive du marché. Un aller-retour avec deux ports différents utilise une recherche multi-destinations, avec retour vers YUL depuis le port de débarquement. Les dates passées, les aéroports non reconnus et les dates au-delà des 365 prochains jours ne déclenchent pas de recherche payante. Aucun prix de remplacement ou prix fictif n’est affiché.
+
+Le tracé maritime conserve une largeur cible de 1,3 pixel CSS au zoom et au redimensionnement ; seules les sections des tubes sont ajustées, sans reconstruire les chemins. Les flèches conservent aussi une taille discrète à l’écran.

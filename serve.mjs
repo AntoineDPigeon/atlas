@@ -3,14 +3,16 @@ import {readFile} from 'node:fs/promises';
 import {fileURLToPath} from 'node:url';
 import path from 'node:path';
 import {handleGoogleReviews} from './server/google-reviews.js';
+import {handleFlightPrices} from './server/flights.js';
 const root=path.resolve(fileURLToPath(new URL('./dist/',import.meta.url)));
 const types={'.html':'text/html; charset=utf-8','.js':'text/javascript; charset=utf-8','.css':'text/css; charset=utf-8','.svg':'image/svg+xml','.geojson':'application/json'};
 createServer(async(req,res)=>{try{
   const url=new URL(req.url,'http://'+(req.headers.host||'localhost:4173'));
-  if(url.pathname==='/api/google-reviews'){
+  if(['/api/google-reviews','/api/flight-prices'].includes(url.pathname)){
     let body='';for await(const chunk of req){body+=chunk.toString();if(body.length>1024){res.writeHead(413);res.end('Request too large');return}}
     const request=new Request(url,{method:req.method,headers:req.headers,...(!['GET','HEAD'].includes(req.method)?{body}:{})});
-    const response=await handleGoogleReviews(request,{GOOGLE_PLACES_API_KEY:process.env.GOOGLE_PLACES_API_KEY});
+    const handler=url.pathname==='/api/flight-prices'?handleFlightPrices:handleGoogleReviews;
+    const response=await handler(request,{GOOGLE_PLACES_API_KEY:process.env.GOOGLE_PLACES_API_KEY,SERPAPI_API_KEY:process.env.SERPAPI_API_KEY});
     res.writeHead(response.status,Object.fromEntries(response.headers));res.end(await response.text());return;
   }
   const pathname=decodeURIComponent(url.pathname);const file=path.resolve(root,'.'+(pathname==='/'?'/index.html':pathname));

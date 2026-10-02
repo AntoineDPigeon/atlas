@@ -4,7 +4,7 @@
   "type": "module",
   "scripts": {
     "start": "node serve.mjs",
-    "check": "node --check dist/app.js && node --check dist/data.js && node --check worker.js && node --check server/google-reviews.js && node --check dist/google-reviews.js",
+    "check": "node --check dist/app.js && node --check dist/data.js && node --check worker.js && node --check server/google-reviews.js && node --check dist/google-reviews.js && node --check dist/flights.js && node --check server/flights.js",
     "test": "node --test",
     "deploy": "wrangler deploy",
     "preview": "wrangler preview",
